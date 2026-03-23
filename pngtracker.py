@@ -13,14 +13,18 @@ import pytz
 IST = pytz.timezone("Asia/Kolkata")
 
 # -------------------------------
-# 📂 FILE PATH (AUTO)
+# 📂 PATH HANDLING (LOCAL + GITHUB)
 # -------------------------------
-desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
-if not os.path.exists(desktop_path):
-    desktop_path = os.path.join(os.path.expanduser("~"), "OneDrive", "Desktop")
+if os.getenv("GITHUB_ACTIONS"):
+    EXCEL_FILE = "metal_rates.xlsx"
+    HISTORY_FILE = "last_prices.json"
+else:
+    desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+    if not os.path.exists(desktop_path):
+        desktop_path = os.path.join(os.path.expanduser("~"), "OneDrive", "Desktop")
 
-EXCEL_FILE = os.path.join(desktop_path, "metal_rates.xlsx")
-HISTORY_FILE = os.path.join(desktop_path, "last_prices.json")
+    EXCEL_FILE = os.path.join(desktop_path, "metal_rates.xlsx")
+    HISTORY_FILE = os.path.join(desktop_path, "last_prices.json")
 
 # -------------------------------
 # 📊 HEADERS (FIXED)
@@ -66,7 +70,7 @@ HEADERS = {
 }
 
 # -------------------------------
-# 📧 EMAIL FUNCTION
+# 📧 EMAIL
 # -------------------------------
 def send_email(subject, body):
     sender = os.getenv("EMAIL_USER")
@@ -94,7 +98,7 @@ def send_email(subject, body):
         print("Email Error:", e)
 
 # -------------------------------
-# 📂 LOAD / SAVE HISTORY
+# 📂 HISTORY
 # -------------------------------
 def load_last_prices():
     if os.path.exists(HISTORY_FILE):
@@ -107,7 +111,7 @@ def save_last_prices(data):
         json.dump(data, f)
 
 # -------------------------------
-# ✅ GET DATA (UPDATED)
+# ✅ GET DATA
 # -------------------------------
 def get_rates():
     try:
@@ -133,7 +137,7 @@ def get_rates():
         return None
 
 # -------------------------------
-# 📊 SAVE TO EXCEL (FIXED STRUCTURE)
+# 📊 SAVE EXCEL (NO HEADER ISSUE)
 # -------------------------------
 def save_excel(data):
     now = datetime.now(IST)
@@ -142,7 +146,7 @@ def save_excel(data):
 
     print("📍 Saving to:", EXCEL_FILE)
 
-    # Create file if not exists
+    # Create file
     if not os.path.exists(EXCEL_FILE):
         wb = Workbook()
         ws = wb.active
@@ -152,7 +156,7 @@ def save_excel(data):
     wb = load_workbook(EXCEL_FILE)
     ws = wb.active
 
-    # Fix header mismatch automatically
+    # Fix header mismatch
     current_headers = [cell.value for cell in ws[1]]
     if current_headers != HEADERS_EXCEL:
         print("⚠ Fixing header mismatch...")
@@ -160,7 +164,7 @@ def save_excel(data):
         ws.append(HEADERS_EXCEL)
         wb.save(EXCEL_FILE)
 
-    # Add row in fixed order
+    # Add row
     row = [
         date,
         time_now,
