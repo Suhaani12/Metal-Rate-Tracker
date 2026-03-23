@@ -13,13 +13,16 @@ import pytz
 IST = pytz.timezone("Asia/Kolkata")
 
 # -------------------------------
-# 📂 PATH HANDLING (LOCAL + GITHUB)
+# 📂 PATH HANDLING (FINAL FIX)
 # -------------------------------
-if os.getenv("GITHUB_ACTIONS"):
+RUNNING_ON_GITHUB = os.path.exists("/home/runner")
+
+if RUNNING_ON_GITHUB:
     EXCEL_FILE = "metal_rates.xlsx"
     HISTORY_FILE = "last_prices.json"
 else:
     desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+
     if not os.path.exists(desktop_path):
         desktop_path = os.path.join(os.path.expanduser("~"), "OneDrive", "Desktop")
 
@@ -27,7 +30,7 @@ else:
     HISTORY_FILE = os.path.join(desktop_path, "last_prices.json")
 
 # -------------------------------
-# 📊 HEADERS (FIXED)
+# 📊 HEADERS
 # -------------------------------
 HEADERS_EXCEL = [
     "Date", "Time",
@@ -137,7 +140,7 @@ def get_rates():
         return None
 
 # -------------------------------
-# 📊 SAVE EXCEL (NO HEADER ISSUE)
+# 📊 SAVE TO EXCEL
 # -------------------------------
 def save_excel(data):
     now = datetime.now(IST)
@@ -146,7 +149,7 @@ def save_excel(data):
 
     print("📍 Saving to:", EXCEL_FILE)
 
-    # Create file
+    # Create file if not exists
     if not os.path.exists(EXCEL_FILE):
         wb = Workbook()
         ws = wb.active
@@ -164,7 +167,7 @@ def save_excel(data):
         ws.append(HEADERS_EXCEL)
         wb.save(EXCEL_FILE)
 
-    # Add row
+    # Add row (fixed order)
     row = [
         date,
         time_now,
@@ -191,6 +194,7 @@ def save_excel(data):
 # -------------------------------
 def main():
     print("\n⏳ Running at:", datetime.now(IST).strftime("%H:%M:%S"))
+    print("📂 File path:", EXCEL_FILE)
 
     data = get_rates()
     if not data:
