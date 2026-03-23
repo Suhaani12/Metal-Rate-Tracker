@@ -8,14 +8,13 @@ from openpyxl import Workbook, load_workbook
 import pytz
 
 # -------------------------------
-# 🇮🇳 IST TIMEZONE
+# 🇮🇳 IST TIMEZONE (FIXED)
 # -------------------------------
 IST = pytz.timezone("Asia/Kolkata")
 
 # -------------------------------
-# 📂 FILE PATH (FINAL FIX)
+# 📂 FILE PATH
 # -------------------------------
-# Always use local directory (works for GitHub + local)
 EXCEL_FILE = "metal_rates.xlsx"
 HISTORY_FILE = "last_prices.json"
 
@@ -104,14 +103,25 @@ def save_last_prices(data):
         json.dump(data, f)
 
 # -------------------------------
-# ✅ GET DATA
+# ✅ GET DATA (FIXED)
 # -------------------------------
 def get_rates():
     try:
         res = requests.get(API_URL, headers=HEADERS, timeout=10)
-        d = res.json()["rates"]
 
-        return {
+        if res.status_code != 200:
+            print("❌ API failed:", res.status_code)
+            return None
+
+        data_json = res.json()
+
+        if "rates" not in data_json:
+            print("❌ Invalid API response")
+            return None
+
+        d = data_json["rates"]
+
+        data = {
             "Gold 24K": d.get("goldPrice24K"),
             "Gold 24K 995": d.get("goldPrice24K995"),
             "Gold 24K 995GW": d.get("goldPrice24K995GW"),
@@ -125,15 +135,21 @@ def get_rates():
             "Source": "API"
         }
 
+        print("📊 Data fetched:", data)  # Debug
+
+        return data
+
     except Exception as e:
-        print("API Error:", e)
+        print("❌ API Error:", e)
         return None
 
 # -------------------------------
-# 📊 SAVE TO EXCEL
+# 📊 SAVE TO EXCEL (IST FIXED)
 # -------------------------------
 def save_excel(data):
-    now = datetime.now(IST)
+    # ✅ Correct IST conversion
+    now = datetime.now(pytz.utc).astimezone(IST)
+
     date = now.strftime("%Y-%m-%d")
     time_now = now.strftime("%H:%M:%S")
 
@@ -157,7 +173,7 @@ def save_excel(data):
         ws.append(HEADERS_EXCEL)
         wb.save(EXCEL_FILE)
 
-    # Add row (fixed order)
+    # Add row
     row = [
         date,
         time_now,
@@ -183,7 +199,7 @@ def save_excel(data):
 # 🎯 MAIN
 # -------------------------------
 def main():
-    print("\n⏳ Running at:", datetime.now(IST).strftime("%H:%M:%S"))
+    print("\n⏳ Running at:", datetime.now(pytz.utc).astimezone(IST).strftime("%H:%M:%S"))
 
     data = get_rates()
     if not data:
@@ -200,7 +216,8 @@ def main():
                 changes.append(f"{m}: {last.get(m)} → {data.get(m)}")
 
         if changes:
-            send_email("Gold Price Alert 🚨", "\n".join(changes))
+            body = "Price Changes:\n\n" + "\n".join(changes)
+            send_email("Gold Price Alert 🚨", body)
 
     save_last_prices(data)
 
