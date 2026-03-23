@@ -15,6 +15,8 @@ jobs:
       # -------------------------------
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # ✅ important for rebase
 
       # -------------------------------
       # 🐍 Setup Python
@@ -41,13 +43,19 @@ jobs:
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
 
       # -------------------------------
-      # 💾 Commit & Push (FIXED)
+      # 💾 Commit & Push (FINAL FIX)
       # -------------------------------
       - name: Commit & Push
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
 
+          # ✅ STEP 1: Sync with remote FIRST
+          git fetch origin
+          git checkout main
+          git pull --rebase origin main
+
+          # ✅ STEP 2: Add & Commit
           git add .
 
           if git diff --cached --quiet; then
@@ -55,8 +63,6 @@ jobs:
           else
             git commit -m "Auto update metal rates"
 
-            # 🔥 IMPORTANT FIX
-            git pull --rebase origin main || true
-
-            git push
+            # ✅ STEP 3: Push safely
+            git push origin main
           fi
