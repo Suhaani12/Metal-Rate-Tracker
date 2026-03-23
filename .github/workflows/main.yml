@@ -10,39 +10,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # -------------------------------
-      # 📥 Checkout repo
-      # -------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
-      # -------------------------------
-      # 🐍 Setup Python
-      # -------------------------------
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # -------------------------------
-      # 📦 Install dependencies
-      # -------------------------------
       - name: Install dependencies
         run: |
-          pip install requests beautifulsoup4 openpyxl pytz
+          pip install requests openpyxl pytz
 
-      # -------------------------------
-      # ▶ Run your script
-      # -------------------------------
       - name: Run script
         run: python pngtracker.py
         env:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
 
-      # -------------------------------
-      # 💾 Commit & push changes
-      # -------------------------------
       - name: Commit & Push
         run: |
           git config --global user.name "github-actions"
@@ -50,9 +35,8 @@ jobs:
 
           git add .
 
-          # Only commit if there are changes
           if git diff --cached --quiet; then
-            echo "No changes to commit"
+            echo "No changes"
           else
             git commit -m "Auto update metal rates"
             git push
