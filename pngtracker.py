@@ -1,17 +1,61 @@
 import requests
-from bs4 import BeautifulSoup
 from datetime import datetime
 import os
 import json
 import smtplib
 from email.mime.text import MIMEText
 from openpyxl import Workbook, load_workbook
+import pytz
 
-EXCEL_FILE = "metal_rates.xlsx"
-HISTORY_FILE = "last_prices.json"
+# -------------------------------
+# 🇮🇳 IST TIMEZONE
+# -------------------------------
+IST = pytz.timezone("Asia/Kolkata")
 
-METALS = ["Gold 24K", "Gold 22K", "Gold 18K", "Gold 14K", "Silver", "Silver Bar", "Platinum"]
+# -------------------------------
+# 📂 FILE PATH (AUTO)
+# -------------------------------
+desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+if not os.path.exists(desktop_path):
+    desktop_path = os.path.join(os.path.expanduser("~"), "OneDrive", "Desktop")
 
+EXCEL_FILE = os.path.join(desktop_path, "metal_rates.xlsx")
+HISTORY_FILE = os.path.join(desktop_path, "last_prices.json")
+
+# -------------------------------
+# 📊 HEADERS (FIXED)
+# -------------------------------
+HEADERS_EXCEL = [
+    "Date", "Time",
+    "Gold 24K",
+    "Gold 24K 995",
+    "Gold 24K 995GW",
+    "Gold 22K",
+    "Gold 18K",
+    "Gold 14K",
+    "Gold 9K",
+    "Silver",
+    "Silver Bar",
+    "Platinum",
+    "Source"
+]
+
+METALS = [
+    "Gold 24K",
+    "Gold 24K 995",
+    "Gold 24K 995GW",
+    "Gold 22K",
+    "Gold 18K",
+    "Gold 14K",
+    "Gold 9K",
+    "Silver",
+    "Silver Bar",
+    "Platinum"
+]
+
+# -------------------------------
+# 🔗 API
+# -------------------------------
 API_URL = "https://goldpriceeditor.droidinfinity.com/api/external/metal-prices/1085"
 
 HEADERS = {
@@ -21,6 +65,9 @@ HEADERS = {
     "user-agent": "Mozilla/5.0"
 }
 
+# -------------------------------
+# 📧 EMAIL FUNCTION
+# -------------------------------
 def send_email(subject, body):
     sender = os.getenv("EMAIL_USER")
     password = os.getenv("EMAIL_PASS")
@@ -42,10 +89,13 @@ def send_email(subject, body):
         server.login(sender, password)
         server.send_message(msg)
         server.quit()
-        print("Email Sent")
+        print("📧 Email Sent")
     except Exception as e:
         print("Email Error:", e)
 
+# -------------------------------
+# 📂 LOAD / SAVE HISTORY
+# -------------------------------
 def load_last_prices():
     if os.path.exists(HISTORY_FILE):
         with open(HISTORY_FILE, "r") as f:
@@ -56,44 +106,88 @@ def save_last_prices(data):
     with open(HISTORY_FILE, "w") as f:
         json.dump(data, f)
 
+# -------------------------------
+# ✅ GET DATA (UPDATED)
+# -------------------------------
 def get_rates():
     try:
-        res = requests.get(API_URL, headers=HEADERS)
-        data = res.json()["rates"]
+        res = requests.get(API_URL, headers=HEADERS, timeout=10)
+        d = res.json()["rates"]
 
         return {
-            "Gold 24K": str(data["goldPrice24K"]),
-            "Gold 22K": str(data["goldPrice22K"]),
-            "Gold 18K": str(data["goldPrice18K"]),
-            "Gold 14K": str(data["goldPrice14K"]),
-            "Silver": str(data["silverPrice"]),
-            "Silver Bar": str(data["silverBarPrice"]),
-            "Platinum": str(data["platinumPrice"])
+            "Gold 24K": d.get("goldPrice24K"),
+            "Gold 24K 995": d.get("goldPrice24K995"),
+            "Gold 24K 995GW": d.get("goldPrice24K995GW"),
+            "Gold 22K": d.get("goldPrice22K"),
+            "Gold 18K": d.get("goldPrice18K"),
+            "Gold 14K": d.get("goldPrice14K"),
+            "Gold 9K": d.get("goldPrice9K"),
+            "Silver": d.get("silverPrice"),
+            "Silver Bar": d.get("silverBarPrice"),
+            "Platinum": d.get("platinumPrice"),
+            "Source": "API"
         }
-    except:
+
+    except Exception as e:
+        print("API Error:", e)
         return None
 
+# -------------------------------
+# 📊 SAVE TO EXCEL (FIXED STRUCTURE)
+# -------------------------------
 def save_excel(data):
-    now = datetime.now()
+    now = datetime.now(IST)
+    date = now.strftime("%Y-%m-%d")
+    time_now = now.strftime("%H:%M:%S")
 
+    print("📍 Saving to:", EXCEL_FILE)
+
+    # Create file if not exists
     if not os.path.exists(EXCEL_FILE):
         wb = Workbook()
         ws = wb.active
-        ws.append(["Date", "Time"] + METALS)
+        ws.append(HEADERS_EXCEL)
         wb.save(EXCEL_FILE)
 
     wb = load_workbook(EXCEL_FILE)
     ws = wb.active
 
-    row = [now.strftime("%Y-%m-%d"), now.strftime("%H:%M:%S")]
+    # Fix header mismatch automatically
+    current_headers = [cell.value for cell in ws[1]]
+    if current_headers != HEADERS_EXCEL:
+        print("⚠ Fixing header mismatch...")
+        ws.delete_rows(1, ws.max_row)
+        ws.append(HEADERS_EXCEL)
+        wb.save(EXCEL_FILE)
 
-    for m in METALS:
-        row.append(data.get(m, ""))
+    # Add row in fixed order
+    row = [
+        date,
+        time_now,
+        data.get("Gold 24K"),
+        data.get("Gold 24K 995"),
+        data.get("Gold 24K 995GW"),
+        data.get("Gold 22K"),
+        data.get("Gold 18K"),
+        data.get("Gold 14K"),
+        data.get("Gold 9K"),
+        data.get("Silver"),
+        data.get("Silver Bar"),
+        data.get("Platinum"),
+        data.get("Source")
+    ]
 
     ws.append(row)
     wb.save(EXCEL_FILE)
 
+    print("✅ Data saved correctly")
+
+# -------------------------------
+# 🎯 MAIN
+# -------------------------------
 def main():
+    print("\n⏳ Running at:", datetime.now(IST).strftime("%H:%M:%S"))
+
     data = get_rates()
     if not data:
         return
@@ -109,9 +203,12 @@ def main():
                 changes.append(f"{m}: {last.get(m)} → {data.get(m)}")
 
         if changes:
-            send_email("Price Changed", "\n".join(changes))
+            send_email("Gold Price Alert 🚨", "\n".join(changes))
 
     save_last_prices(data)
 
+# -------------------------------
+# ▶ RUN
+# -------------------------------
 if __name__ == "__main__":
     main()
