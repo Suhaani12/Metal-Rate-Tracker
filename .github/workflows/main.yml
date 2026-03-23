@@ -19,6 +19,15 @@ jobs:
           fetch-depth: 0
 
       # -------------------------------
+      # 🔄 Sync latest repo FIRST (FIX)
+      # -------------------------------
+      - name: Sync with repo
+        run: |
+          git fetch origin
+          git checkout main
+          git reset --hard origin/main
+
+      # -------------------------------
       # 🐍 Setup Python
       # -------------------------------
       - name: Setup Python
@@ -43,19 +52,13 @@ jobs:
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
 
       # -------------------------------
-      # 💾 Commit & Push (ULTIMATE FIX)
+      # 💾 Commit & Push (FINAL)
       # -------------------------------
       - name: Commit & Push
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
 
-          # ✅ Always sync fresh copy
-          git fetch origin
-          git checkout main
-          git reset --hard origin/main
-
-          # ✅ Apply new changes
           git add .
 
           if git diff --cached --quiet; then
@@ -63,6 +66,6 @@ jobs:
           else
             git commit -m "Auto update metal rates"
 
-            # 🔥 FORCE PUSH (key fix)
+            # Force push to avoid conflicts
             git push origin main --force
           fi
