@@ -13,21 +13,11 @@ import pytz
 IST = pytz.timezone("Asia/Kolkata")
 
 # -------------------------------
-# 📂 PATH HANDLING (FINAL FIX)
+# 📂 FILE PATH (FINAL FIX)
 # -------------------------------
-RUNNING_ON_GITHUB = os.path.exists("/home/runner")
-
-if RUNNING_ON_GITHUB:
-    EXCEL_FILE = "metal_rates.xlsx"
-    HISTORY_FILE = "last_prices.json"
-else:
-    desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
-
-    if not os.path.exists(desktop_path):
-        desktop_path = os.path.join(os.path.expanduser("~"), "OneDrive", "Desktop")
-
-    EXCEL_FILE = os.path.join(desktop_path, "metal_rates.xlsx")
-    HISTORY_FILE = os.path.join(desktop_path, "last_prices.json")
+# Always use local directory (works for GitHub + local)
+EXCEL_FILE = "metal_rates.xlsx"
+HISTORY_FILE = "last_prices.json"
 
 # -------------------------------
 # 📊 HEADERS
@@ -73,7 +63,7 @@ HEADERS = {
 }
 
 # -------------------------------
-# 📧 EMAIL
+# 📧 EMAIL FUNCTION
 # -------------------------------
 def send_email(subject, body):
     sender = os.getenv("EMAIL_USER")
@@ -194,7 +184,6 @@ def save_excel(data):
 # -------------------------------
 def main():
     print("\n⏳ Running at:", datetime.now(IST).strftime("%H:%M:%S"))
-    print("📂 File path:", EXCEL_FILE)
 
     data = get_rates()
     if not data:
